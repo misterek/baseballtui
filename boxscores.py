@@ -18,7 +18,6 @@ TOP_INNING    = '\u23f6'
 
 class BoxScore(Widget):
 
-
     def set_game_id(self, game_id, start_info):
         self.game_id = game_id
         self.start_info = start_info
