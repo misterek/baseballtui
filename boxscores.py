@@ -125,7 +125,7 @@ class BoxScore(Widget):
         yield Static(id="info5")
 
 
-class MLBApp(App):
+class BoxScores(App):
 
     BINDINGS = [("q", "quit", "Quit")]
 
@@ -134,6 +134,7 @@ class MLBApp(App):
 
     def compose(self) -> ComposeResult:
         today = datetime.today().strftime('%m/%d/%Y')
+        self.title = f'Games for {today}'
         sched = statsapi.schedule(start_date=today,end_date=today)
         yield Header()
 
@@ -147,5 +148,5 @@ class MLBApp(App):
 
 
 if __name__ == "__main__":
-    app = MLBApp()
+    app = BoxScores()
     app.run()
