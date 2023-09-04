@@ -1,0 +1,24 @@
+
+.lineup {
+    border: solid green;
+    width: 1fr;
+    height: 100%;
+
+}
+
+.gameday {
+    border: solid red;
+    width: 4fr; 
+    height: 100%;
+}
+
+.linescore {
+    border: solid blue;
+    width: 100%; 
+    height: 1fr;
+}
+
+.horizontal {
+    border: solid white;
+    height: 5fr;
+}
