@@ -11,56 +11,14 @@ from textual.reactive import reactive
 import calendar
 import random
 from textual.containers import Horizontal, Vertical
-OCCUPIED_BASE = '\u2b25'
+from gamestate import GameState
+
+#OCCUPIED_BASE = '\u2b25'
+OCCUPIED_BASE = '\u2662'
 EMPTY_BASE    = '\u2b26'
 
-class GameState():
-    def __init__(self):
-        self.full_results = {}
-        self.updated_at = datetime.now()
-        self.home_team = ""
-        self.away_team = ""
-        self.home_team_abbreviation = ""
-        self.away_team_abbreviation = ""
-        self.home_innings = []
-        self.away_innings = []
-        self.home_runs = 0
-        self.home_hits = 0
-        self.home_errors = 0
-        self.away_runs = 0
-        self.away_hits = 0
-        self.away_errors = 0
 
 
-
-        # Lineups
-        self.home_lineup = []
-        self.away_lineup = []
-
-    def get_player_name(self, id):
-        return self.full_results['gameData']['players']['ID' + str(id)]['lastName']
-    
-    # gets their current position in this game, since that's all I care about. At least I think that's what this is.
-    def get_player_position(self, id):
-        if 'ID' + str(id) in self.full_results['liveData']['boxscore']['teams']['away']['players']:   
-            return self.full_results['liveData']['boxscore']['teams']['away']['players']['ID' + str(id)]['position']['abbreviation']
-        return self.full_results['liveData']['boxscore']['teams']['home']['players']['ID' + str(id)]['position']['abbreviation']
-    
-    def get_player_ab(self, id):
-        if 'ID' + str(id) in self.full_results['liveData']['boxscore']['teams']['away']['players']:
-            player = self.full_results['liveData']['boxscore']['teams']['away']['players']['ID' + str(id)]
-        else:
-            player = self.full_results['liveData']['boxscore']['teams']['home']['players']['ID' + str(id)]
-        
-        try:
-            return str(player['stats']['batting']['hits']) + "-" + str(player['stats']['batting']['atBats'])
-        except:
-            return("")
-
-
-
-
-    
 
 
 class Lineup(Vertical):
@@ -103,21 +61,8 @@ class LineScore(Vertical):
 class BoxScores(App):
 
     def update_game_state(self):
-        game_state =  statsapi.get('game', {'gamePk' : "716732"}) 
-        self.game_state.full_results = game_state
 
-        # shortName also available
-        # record available
-        # weather available
-        self.game_state.home_team = game_state['gameData']['teams']['home']['name']
-        self.game_state.away_team = game_state['gameData']['teams']['away']['name']
-
-        self.game_state.home_team_abbreviation = game_state['gameData']['teams']['home']['abbreviation']
-        self.game_state.away_team_abbreviation = game_state['gameData']['teams']['away']['abbreviation']
-
-
-        self.game_state.home_lineup = game_state['liveData']['boxscore']['teams']['home']['battingOrder']
-        self.game_state.away_lineup = game_state['liveData']['boxscore']['teams']['away']['battingOrder']
+        self.game_state.update()
 
 
         # Do this elsewhere eventually
@@ -139,27 +84,7 @@ class BoxScores(App):
             lineup_table.update_cell(str(location), "position", self.game_state.get_player_position(player_id) )
             lineup_table.update_cell(str(location), "stats", self.game_state.get_player_ab(player_id) )
         
-
-        self.game_state.away_innings = []
-        self.game_state.home_innings = []
-
-        # I have confused myself between updating the object and the display
-        # should move lal of this over to the gamestate class
-        for inning in game_state['liveData']['linescore']['innings']:
-            if 'runs' in inning['away']:
-                self.game_state.away_innings.append(str(inning['away']['runs']))
-            if 'runs' in inning['home']:
-                self.game_state.home_innings.append(str(inning['home']['runs']))
-
-
-        self.game_state.away_runs = game_state['liveData']['linescore']['teams']['away']['runs']
-        self.game_state.home_runs = game_state['liveData']['linescore']['teams']['home']['runs']
-        self.game_state.away_hits = game_state['liveData']['linescore']['teams']['away']['hits']
-        self.game_state.home_hits = game_state['liveData']['linescore']['teams']['home']['hits']      
-        self.game_state.away_errors = game_state['liveData']['linescore']['teams']['away']['errors']
-        self.game_state.home_errors = game_state['liveData']['linescore']['teams']['home']['errors']   
-
-
+ 
         # Spacing
         # 10 for team
         # 3 for each inning
@@ -204,10 +129,6 @@ class BoxScores(App):
         pitchers_text = Text("P:  " + self.game_state.full_results['liveData']['linescore']['defense']['pitcher']['fullName'] + "    " + "AB: " + self.game_state.full_results['liveData']['linescore']['offense']['batter']['fullName'] , justify="center")
 
         pitchers_line.update(pitchers_text)
-        self.game_state.updated_at = datetime.now()
-
-
-
 
     BINDINGS = [("q", "quit", "Quit")]
 
@@ -221,13 +142,47 @@ class BoxScores(App):
 
         t = self.query_one(".gameday")
 
-        text = Text("CenterMe", justify="center")
-        text = text + Text("\n") 
-        text = text + Text(OCCUPIED_BASE) + Text("\n")
-        text = text + Text("/", justify="", style="white") + Text(" ", style="green on green") + Text("\\", justify="right" ,style="white") + Text("\n")
-        text = text + Text("/", justify="", style="white") + Text("   ", style="green on green") + Text("\\", justify="right" ,style="white") + Text("\n")
-        text = text + Text("/", justify="", style="white") + Text("     ", style="green on green") + Text("\\", justify="right" ,style="white") + Text("\n")
-        text = text + Text("/", justify="", style="white") + Text("       ", style="green on green") + Text("\\", justify="right" ,style="white") 
+        SLASH = Text("/", style="white on brown")
+        BACKSLASH = Text("\\", style="white on brown")
+        SPACES = [
+            Text(" ", style="green on green"),
+            Text("     ", style="green on green"),
+            Text("       ", style="green on green"),
+            Text("         ", style="green on green"),
+            Text("           ", style="green on green"),
+            Text("             ", style="green on green")
+        ]
+        NL = Text("\n")
+
+        text = Text("Cubs vs. Dodgers", justify="center") + NL
+        text += Text(OCCUPIED_BASE) + NL
+
+        for space in SPACES:
+            text += SLASH + space + BACKSLASH + NL
+
+        text += Text(OCCUPIED_BASE, justify="", style="white") + SPACES[-1] + Text(OCCUPIED_BASE, justify="", style="white") + Text("\n")
+
+        #text += Text(OCCUPIED_BASE, justify="", style="white") + Text("         ", style="green on green") + Text(OCCUPIED_BASE, justify="", style="white") + Text("\n")
+       
+        for space in reversed(SPACES):
+            text += BACKSLASH + space + SLASH + NL
+
+
+        # text = Text("Cubs vs. Dodgers", justify="center")
+        # text = text + NL
+        # text += Text(OCCUPIED_BASE) + NL
+        # text += SLASH + SPACE1 + BACKSLASH + NL
+        # text += SLASH + Text("   ", style="green on green") + BACKSLASH + Text("\n")
+        # text += SLASH + Text("     ", style="green on green") + BACKSLASH + Text("\n")
+        # text += SLASH + Text("       ", style="green on green") + BACKSLASH + Text("\n")
+        # text += Text(OCCUPIED_BASE, justify="", style="white") + Text("         ", style="green on green") + Text(OCCUPIED_BASE, justify="", style="white") + Text("\n")
+        # text += BACKSLASH + Text("       ", style="green on green") + SLASH + Text("\n")
+        # text += BACKSLASH + Text("     ", style="green on green") + SLASH + Text("\n")
+        # text += BACKSLASH + Text("   ", style="green on green") + SLASH + Text("\n")
+        # text += BACKSLASH + Text(" ", style="green on green") + SLASH + Text("\n")
+        
+ # ⟋
+
         t.update(text)
 
 
